@@ -1,0 +1,110 @@
+LIST OF QUERIES:
+
+1. Select the meal plan descriptions of all guests and sort by guest_id.
+
+SELECT guest.guest_id, reservation.reservation_id, guest.last_name, meal_plan.plan_desc
+FROM (reservation
+INNER JOIN meal_plan ON reservation.meal_plan_id = meal_plan.meal_plan_id)
+INNER JOIN guest ON reservation.guest_id = guest.guest_id
+ORDER BY guest.guest_id;
+
+2. Select the parking dates and locations of all the guests who booked a spot from November 5th, 2020.
+
+SELECT guest.guest_id, reservation.reservation_id, guest.last_name, parking.location, parking.check_in_date, parking.check_out_date
+FROM (reservation 
+INNER JOIN parking ON parking.parking_id = reservation.parking_id)
+INNER JOIN guest ON guest.reservation_id = reservation.reservation_id
+WHERE parking.check_in_date = date('2020-11-05');
+
+3. Calculate the average rates for each guest type and order by the average rate amount from the biggest to the lowest.
+
+SELECT guest_type.type, AVG(rates.rate_decimal) AS "average rate"
+FROM ((reservation
+INNER JOIN room ON reservation.room_id = room.room_id)
+INNER JOIN rates ON rates.rate_id = room.rate_id)
+INNER JOIN guest_type ON guest_type.guest_type_id=reservation.guest_type_id
+GROUP BY guest_type.guest_type_id
+ORDER BY AVG(rates.rate_decimal) DESC;
+
+4. Get the ids, names and phone numbers of all the guests who booked rooms for November 5th, 2020.
+
+SELECT guest.guest_id, guest.first_name, guest.last_name, guest.phone, reservation.start_date
+FROM guest
+INNER JOIN reservation ON guest.reservation_id = reservation.reservation_id
+WHERE reservation.start_date = date('2020-11-05');
+
+5. Select the ids, SSNs, names and phones of all the guests who booked a room exactly for 3 days.
+
+SELECT guest.guest_id, guest.SSN, guest.first_name, guest.last_name, guest.phone
+FROM guest
+WHERE guest.reservation_id IN
+(SELECT reservation.reservation_id
+FROM reservation
+WHERE reservation.end_date - reservation.start_date = 3);
+
+6. Select the employees' names, ids, and how many customers they served from 4th to 6th (inclusively) of November 2020; order by the employees' ids.
+
+SELECT receptionists.employee_id, receptionists.employee_name, COUNT(reservation.employee_id) AS "Customers served"
+FROM receptionists
+LEFT OUTER JOIN reservation ON receptionists.employee_id = reservation.employee_id
+WHERE reservation.start_date > date('2020-11-03') AND reservation.end_date < date('2020-11-07')
+GROUP BY receptionists.employee_id
+ORDER BY receptionists.employee_id;
+
+7. Select room numbers, hotel ids and room descriptions of the available rooms.
+
+SELECT room.hotel_id, room.room_number, room.room_desc
+FROM room
+WHERE room.room_id IN
+(SELECT room.room_id 
+FROM room
+WHERE room.availability = '1');
+
+8. Select how many times each guest type paid by card.
+
+SELECT guest_type.type, COUNT(payment.method) as 'Paid by card'
+FROM (guest_type 
+INNER JOIN reservation ON reservation.guest_type_id = guest_type.guest_type_id)
+INNER JOIN payment ON payment.payment_id = reservation.payment_id
+WHERE payment.method = 'card' 
+GROUP BY guest_type.type;
+
+9. Count how many times each meal plan was ordered: show its id, description and times ordered.
+
+SELECT reservation.meal_plan_id, meal_plan.plan_desc, COUNT(reservation.meal_plan_id) AS "Times ordered"
+FROM reservation
+INNER JOIN meal_plan ON meal_plan.meal_plan_id = reservation.meal_plan_id
+GROUP BY reservation.meal_plan_id
+ORDER BY COUNT(reservation.meal_plan_id) DESC;
+
+10. Select the id, hotel branch and location of the hotels which do not have rooms available.
+
+SELECT hotel.hotel_id, hotel.branch, hotel.location
+FROM hotel
+WHERE hotel.hotel_id NOT IN (
+SELECT room.hotel_id
+FROM room
+WHERE room.availability = '1'
+GROUP BY room.hotel_id);
+
+11. Select locations of the hotels with the most expensive rooms.
+
+SELECT hotel.location
+FROM hotel
+INNER JOIN room ON room.hotel_id = hotel.hotel_id
+WHERE room.rate_id = 
+(SELECT rates.rate_id
+FROM rates
+WHERE rates.rate_decimal = (SELECT MAX(rate_decimal)
+FROM rates));
+
+12. Select the reservation, guest and parking ids and locations for all the reservations that have parking included in the locations where cars stay for no more than 2 days.
+
+SELECT  reservation.guest_id, reservation.reservation_id, reservation.parking_id, parking.location
+FROM reservation
+INNER JOIN parking ON parking.parking_id = reservation.parking_id
+WHERE parking.location IN
+(SELECT parking.location
+FROM parking
+GROUP BY parking.location
+HAVING AVG(parking.check_out_date-parking.check_in_date) <= 2);
